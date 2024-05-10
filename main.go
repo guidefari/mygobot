@@ -11,39 +11,42 @@ import (
 	"github.com/joho/godotenv"
 )
 
+var discord_session_token string
+var preferred_channel_id string
+var disco_session *discordgo.Session
+
 // init is invoked before main()
 func init() {
 	// loads values from .env into the system
 	if err := godotenv.Load(); err != nil {
 		log.Print("No .env file found")
 	}
+
+	token, exists := os.LookupEnv("DISCORD_TOKEN")
+	if exists {
+		fmt.Println("Discord token found & loaded")
+		discord_session_token = token
+	}
+
+	sess, err := discordgo.New("Bot " + discord_session_token)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	disco_session = sess
+	err = disco_session.Open()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Bot is online")
 }
 
 func main() {
-	// Get the GITHUB_USERNAME environment variable
-	discord_token, exists := os.LookupEnv("DISCORD_TOKEN")
 
-	if exists {
-		fmt.Println(discord_token)
-	}
-
-	token_string := fmt.Sprintf("Bot %s", discord_token)
-	sess, err := discordgo.New(token_string)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	sess.AddHandler(session_handler)
-	sess.Identify.Intents = discordgo.IntentsAllWithoutPrivileged
-
-	err = sess.Open()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer sess.Close()
-
-	fmt.Println("Bot is online")
+	disco_session.Identify.Intents = discordgo.IntentsAllWithoutPrivileged
+	disco_session.AddHandler(session_handler)
+	defer disco_session.Close()
 
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
@@ -56,7 +59,7 @@ func session_handler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	if m.Content == "hello" {
-		s.ChannelMessageSend(m.ChannelID, "world type shi")
+		s.ChannelMessageSend(m.ChannelID, "Thanks for the refactor🫡")
 	}
 
 }
