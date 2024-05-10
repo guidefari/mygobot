@@ -5,15 +5,20 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
 )
 
-var discord_session_token string
-var preferred_channel_id string
-var disco_session *discordgo.Session
+var (
+	outfile, _            = os.Create("server.log")
+	local_log             = log.New(outfile, "", log.LstdFlags|log.Lshortfile)
+	discord_session_token string
+	preferred_channel_id  string
+	disco_session         *discordgo.Session
+)
 
 // init is invoked before main()
 func init() {
@@ -22,10 +27,16 @@ func init() {
 		log.Print("No .env file found")
 	}
 
-	token, exists := os.LookupEnv("DISCORD_TOKEN")
+	env_var, exists := os.LookupEnv("DISCORD_TOKEN")
 	if exists {
 		fmt.Println("Discord token found & loaded")
-		discord_session_token = token
+		discord_session_token = env_var
+	}
+
+	env_var, exists = os.LookupEnv("PREFERRED_CHANNEL_ID")
+	if exists {
+		fmt.Println("Channel ID we in")
+		preferred_channel_id = env_var
 	}
 
 	sess, err := discordgo.New("Bot " + discord_session_token)
@@ -58,8 +69,22 @@ func session_handler(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	if m.Content == "hello" {
-		s.ChannelMessageSend(m.ChannelID, "Thanks for the refactor🫡")
+	messageContent := m.Content
+
+	if messageContent == "!rss" {
+		s.ChannelMessageSend(m.ChannelID, "Yo! I'm here. Use `!rss help`")
+		local_log.Printf("DCScragor got a command from %s, Command: %s", m.Author, messageContent)
 	}
 
+	// !rss help
+	if strings.HasPrefix(m.Content, "!rss") && len(strings.Split(m.Content, " ")) >= 2 {
+		if strings.Split(m.Content, " ")[1] == "help" {
+			sendDudes(s, m)
+		}
+	}
+
+}
+
+func sendDudes(s *discordgo.Session, m *discordgo.MessageCreate) {
+	s.ChannelMessageSend(m.ChannelID, "Available commands:\n----------------------------\n!rss add_blog <URL>       Adds your RSS feed URL to the scrape wish list.")
 }
