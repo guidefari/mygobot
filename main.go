@@ -70,6 +70,15 @@ func session_handler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	messageContent := m.Content
+	var command []string
+
+	if strings.HasPrefix(messageContent, "!rss") {
+		command = strings.Split(messageContent, " ")
+	}
+
+	if len(command) == 0 {
+		return
+	}
 
 	if messageContent == "!rss" {
 		s.ChannelMessageSend(m.ChannelID, "Yo! I'm here. Use `!rss help`")
@@ -77,9 +86,20 @@ func session_handler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	// !rss help
-	if strings.HasPrefix(m.Content, "!rss") && len(strings.Split(m.Content, " ")) >= 2 {
-		if strings.Split(m.Content, " ")[1] == "help" {
+	if len(command) >= 2 {
+		if command[1] == "help" {
 			sendDudes(s, m)
+		}
+	}
+
+	// !rss add_blog <url>
+	if len(command) >= 3 {
+		if command[1] == "add_blog" && isUrl(command[2]) {
+			s.ChannelMessageSend(m.ChannelID, "Adding blog to list 🔥")
+			handleAddBlogToList(s, command[2], m)
+			local_log.Printf("Blog adding request from %s, Command: %s", m.Author, m.Content)
+		} else {
+			s.ChannelMessageSend(m.ChannelID, "Please use a proper URL!")
 		}
 	}
 
@@ -87,4 +107,30 @@ func session_handler(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 func sendDudes(s *discordgo.Session, m *discordgo.MessageCreate) {
 	s.ChannelMessageSend(m.ChannelID, "Available commands:\n----------------------------\n!rss add_blog <URL>       Adds your RSS feed URL to the scrape wish list.")
+}
+
+func isUrl(s string) bool {
+	return strings.Contains(s, "http://") || strings.Contains(s, "https://")
+}
+
+func handleAddBlogToList(s *discordgo.Session, url string, m *discordgo.MessageCreate) {
+	blog_list_filename := "blog_request.list"
+
+	file, err := os.OpenFile(blog_list_filename, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil && err.Error() == "open blog_request.list: no such file or directory" {
+		file, _ = os.Create(blog_list_filename)
+		local_log.Printf("File Created: blog_request.list")
+	}
+
+	defer file.Close()
+	if !strings.Contains(readFile(blog_list_filename), url) {
+		if _, err := file.WriteString(url + "\n"); err != nil {
+			local_log.Fatal(err)
+		} else {
+			s.ChannelMessageSend(m.ChannelID, "Blog URL is added to wish list.")
+			local_log.Printf("Added a new blog to the wish list. Author: %s, URL: %s", m.Author, url)
+		}
+	} else {
+		s.ChannelMessageSend(m.ChannelID, "You've already requested for this URL!")
+	}
 }
