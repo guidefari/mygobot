@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/mmcdole/gofeed"
@@ -34,11 +35,10 @@ func ParseRSS() {
 			items := feed.Items
 
 			for i := 0; i < len(items); i++ {
-				if items[i].Title != "" && items[i].Link != "" {
-					local_log.Println(items[i].Title)
-					local_log.Println(items[i].Link)
+				if items[i].Title != "" && items[i].Link != "" && !strings.Contains(readFile("feed_item.list"), items[i].Link) {
 					feedItem := FeedItem{Title: items[i].Title, URL: items[i].Link}
 					feed_items = append(feed_items, feedItem)
+					local_log.Printf("[INFO] FeedItem is created. Title: %s Link: %s", items[i].Title, items[i].Link)
 
 					// Write link to the file
 					file, err := openOrCreateFile("feed_item.list")
@@ -49,6 +49,11 @@ func ParseRSS() {
 					if _, err := file.WriteString(items[i].Link + "\n"); err != nil {
 						local_log.Fatal(err)
 					}
+
+					msg := "New thing posted 🚨: **" + items[i].Title + "**\n" + items[i].Link
+					disco_session.ChannelMessageSend(preferred_channel_id, msg)
+				} else {
+					local_log.Printf("[WARN] FeedItem couldn't create since link or title is empty!. URL: %s", feedList[k])
 				}
 			}
 

@@ -18,10 +18,15 @@ func checkErr(err error) {
 }
 
 func openOrCreateFile(name string) (*os.File, error) {
-
 	file, err := os.OpenFile(name, os.O_APPEND|os.O_WRONLY, 0644)
+
 	if err != nil && err.Error() == "open "+name+": no such file or directory" {
-		file, _ = os.Create(name)
+		file, err = os.Create(name)
+
+		if err != nil {
+			return nil, err
+		}
+
 		local_log.Printf("File Created: " + name)
 		return file, nil
 	}
