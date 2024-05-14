@@ -56,6 +56,7 @@ func init() {
 func main() {
 
 	disco_session.Identify.Intents = discordgo.IntentsAllWithoutPrivileged
+	go ParseRSS()
 	disco_session.AddHandler(session_handler)
 	defer disco_session.Close()
 
@@ -116,11 +117,7 @@ func isUrl(s string) bool {
 func handleAddBlogToList(s *discordgo.Session, url string, m *discordgo.MessageCreate) {
 	blog_list_filename := "blog_request.list"
 
-	file, err := os.OpenFile(blog_list_filename, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil && err.Error() == "open blog_request.list: no such file or directory" {
-		file, _ = os.Create(blog_list_filename)
-		local_log.Printf("File Created: blog_request.list")
-	}
+	file, _ := openOrCreateFile(blog_list_filename)
 
 	defer file.Close()
 	if !strings.Contains(readFile(blog_list_filename), url) {
