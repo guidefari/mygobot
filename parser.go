@@ -15,9 +15,10 @@ type FeedItem struct {
 }
 
 func ParseRSS() {
-	feedList := [2]string{"https://goosebumps.fm/rss.xml", "http://musicforprogramming.net/rss.php"}
+	feedList := strings.Split(readFile("blog_request.list"), "\n")
+	fmt.Println(feedList)
 	feedParser := gofeed.NewParser()
-	feedParser.Client = &http.Client{Timeout: time.Second * 10}
+	feedParser.Client = &http.Client{Timeout: time.Second * 16}
 
 	feed_items := make([]FeedItem, 1)
 
@@ -27,7 +28,7 @@ func ParseRSS() {
 
 			if err != nil {
 				fmt.Println(err)
-				// local_log.Printf("[WARN] FeedItem couldn't create since link or title is empty!. URL: %s", feedList[k])
+				local_log.Printf("[WARN] Cannont parse this one. URL: %s", feedList[k])
 				return
 			}
 
@@ -35,6 +36,8 @@ func ParseRSS() {
 			items := feed.Items
 
 			for i := 0; i < len(items); i++ {
+				local_log.Printf(items[i].Link + items[i].Title)
+
 				if items[i].Title != "" && items[i].Link != "" && !strings.Contains(readFile("feed_item.list"), items[i].Link) {
 					feedItem := FeedItem{Title: items[i].Title, URL: items[i].Link}
 					feed_items = append(feed_items, feedItem)
@@ -53,7 +56,7 @@ func ParseRSS() {
 					msg := "New thing posted 🚨: **" + items[i].Title + "**\n" + items[i].Link
 					disco_session.ChannelMessageSend(preferred_channel_id, msg)
 				} else {
-					local_log.Printf("[WARN] FeedItem couldn't create since link or title is empty!. URL: %s", feedList[k])
+					local_log.Printf("[WARN] skipping %s %s", items[i].Title, items[i].Link)
 				}
 			}
 
